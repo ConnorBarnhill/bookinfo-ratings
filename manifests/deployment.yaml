@@ -1,0 +1,71 @@
+##################################################################################################
+# Ratings service
+##################################################################################################
+apiVersion: v1
+kind: Service
+metadata:
+  name: ratings
+  labels:
+    app: ratings
+spec:
+  ports:
+  - port: 9080
+    name: http
+  selector:
+    app: ratings
+---
+apiVersion: extensions/v1beta1
+kind: Deployment
+metadata:
+  name: ratings-v1
+spec:
+  replicas: 1
+  template:
+    metadata:
+      labels:
+        app: ratings
+        version: v1
+    spec:
+      containers:
+      - name: ratings
+        image: cbarnhill/bookinfo-ratings-v1:latest
+        imagePullPolicy: IfNotPresent
+        ports:
+        - containerPort: 9080
+---
+apiVersion: networking.istio.io/v1alpha3
+kind: DestinationRule
+metadata:
+  name: ratings
+spec:
+  host: ratings
+  trafficPolicy:
+    tls:
+      mode: ISTIO_MUTUAL
+  subsets:
+  - name: v1
+    labels:
+      version: v1
+  - name: v2
+    labels:
+      version: v2
+  - name: v2-mysql
+    labels:
+      version: v2-mysql
+  - name: v2-mysql-vm
+    labels:
+      version: v2-mysql-vm
+---
+apiVersion: networking.istio.io/v1alpha3
+kind: VirtualService
+metadata:
+  name: ratings
+spec:
+  hosts:
+  - ratings
+  http:
+  - route:
+    - destination:
+        host: ratings
+        subset: v1
+---
